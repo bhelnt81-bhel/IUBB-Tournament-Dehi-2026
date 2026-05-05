@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inter Unit Basketball Tournament 2026</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#E87722">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Urgent Notice Banner -->
+    <div id="urgent-notice-banner" class="hidden">
+        <span class="icon">🚨</span>
+        <span id="urgent-notice-text"></span>
+        <button id="close-notice-btn">&times;</button>
+    </div>
+
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="logo-area">
+            <span class="icon">🏀</span>
+            <div class="brand-text">
+                <h1>BHEL Hoops</h1>
+                <p>BHEL Township | Estate Office</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="app-content">
+        <!-- Loader -->
+        <div id="loader" class="hidden">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- SCREEN: Home -->
+        <section id="screen-home" class="screen active fade-in">
+            <div class="hero">
+                <div class="hero-image"></div>
+                <h2>Inter Unit Basketball Tournament 2026</h2>
+                <div class="countdown">
+                    <p>Starts In:</p>
+                    <div id="timer-display" class="timer">10d 15h 22m</div>
+                </div>
+            </div>
+            
+            <div class="nav-tiles">
+                <button class="tile" data-target="schedule">
+                    <span class="tile-icon">📅</span>
+                    <span class="tile-label">Schedule</span>
+                </button>
+                <button class="tile" data-target="live">
+                    <span class="tile-icon">🔴</span>
+                    <span class="tile-label">Live Match</span>
+                </button>
+                <button class="tile" data-target="standings">
+                    <span class="tile-icon">🏆</span>
+                    <span class="tile-label">Standings</span>
+                </button>
+                <button class="tile" data-target="food">
+                    <span class="tile-icon">🍽️</span>
+                    <span class="tile-label">Food Menu</span>
+                </button>
+                <button class="tile" data-target="room">
+                    <span class="tile-icon">🛏️</span>
+                    <span class="tile-label">Room Info</span>
+                </button>
+                <button class="tile" data-target="notices">
+                    <span class="tile-icon">📢</span>
+                    <span class="tile-label">Notices</span>
+                </button>
+                <button class="tile" data-target="request">
+                    <span class="tile-icon">✋</span>
+                    <span class="tile-label">Raise Request</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN: Schedule -->
+        <section id="screen-schedule" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Tournament Schedule</h2>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-day="1">Day 1</button>
+                <button class="tab-btn" data-day="2">Day 2</button>
+                <button class="tab-btn" data-day="3">Day 3</button>
+                <button class="tab-btn" data-day="4">Day 4</button>
+                <button class="tab-btn" data-day="5">Day 5</button>
+            </div>
+            <div id="fixtures-container" class="card-list">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Live Match -->
+        <section id="screen-live" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2><span class="pulse-dot">🔴</span> Live Match</h2>
+            </div>
+            <div id="live-match-container" class="live-scoreboard">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Standings -->
+        <section id="screen-standings" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Points Table</h2>
+            </div>
+            <div class="table-container">
+                <table id="standings-table">
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>P</th>
+                            <th>W</th>
+                            <th>L</th>
+                            <th>Pts</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            <p class="table-note">* Top 2 teams qualify for Semi-Finals</p>
+        </section>
+
+        <!-- SCREEN: Food Menu -->
+        <section id="screen-food" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Today's Menu</h2>
+            </div>
+            <div id="food-container" class="card-list">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Room Info -->
+        <section id="screen-room" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Room Information</h2>
+            </div>
+            <div class="form-container">
+                <label for="room-team-select">Select Your Team</label>
+                <select id="room-team-select">
+                    <option value="">-- Choose Team --</option>
+                    <!-- Populated by JS -->
+                </select>
+                <button id="get-room-btn" class="btn primary">Get Info</button>
+            </div>
+            <div id="room-info-container" class="hidden result-card">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Notices -->
+        <section id="screen-notices" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Announcements</h2>
+            </div>
+            <div id="notices-container" class="card-list">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Raise Request -->
+        <section id="screen-request" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Raise Request</h2>
+            </div>
+            <div class="form-container">
+                <form id="demand-form">
+                    <div class="form-group">
+                        <label for="demand-team">Team Name</label>
+                        <select id="demand-team" required>
+                            <option value="">-- Choose Team --</option>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="demand-category">Category</label>
+                        <select id="demand-category" required>
+                            <option value="">-- Choose Category --</option>
+                            <option value="Room">Room</option>
+                            <option value="Food">Food</option>
+                            <option value="Logistics">Logistics</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="demand-desc">Description</label>
+                        <textarea id="demand-desc" rows="4" required placeholder="Describe your requirement..."></textarea>
+                    </div>
+                    <button type="submit" class="btn primary">Submit Request</button>
+                </form>
+                <div id="demand-success" class="hidden alert success">Request submitted successfully!</div>
+            </div>
+        </section>
+
+        <!-- SCREEN: Admin Dashboard -->
+        <section id="screen-admin" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Exit Admin</button>
+                <h2>⚙️ Admin Dashboard</h2>
+            </div>
+            <div class="admin-nav-tiles">
+                <button class="tile" data-admin-target="admin-overview">Overview</button>
+                <button class="tile" data-admin-target="admin-fixtures">Fixtures</button>
+                <button class="tile" data-admin-target="admin-demands">Demands</button>
+                <button class="tile" data-admin-target="admin-notices">Notices</button>
+            </div>
+            <div id="admin-content-area" class="admin-content mt-2">
+                <!-- Admin sub-screens will go here -->
+                <div id="admin-overview" class="admin-sub-screen active">
+                    <h3>Overview</h3>
+                    <div class="stats-grid" id="admin-stats-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div id="admin-fixtures" class="admin-sub-screen hidden">
+                    <h3>Manage Fixtures</h3>
+                    <p class="text-small">Functionality mapped to Apps Script POST.</p>
+                </div>
+                <div id="admin-demands" class="admin-sub-screen hidden">
+                    <h3>Pending Demands</h3>
+                    <div id="admin-demands-list"></div>
+                </div>
+                <div id="admin-notices" class="admin-sub-screen hidden">
+                    <h3>Post Notice</h3>
+                    <form id="admin-notice-form">
+                        <input type="text" id="notice-title" placeholder="Title" required>
+                        <textarea id="notice-msg" placeholder="Message" required></textarea>
+                        <select id="notice-priority">
+                            <option value="Normal">Normal</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                        <button type="submit" class="btn primary">Post</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Admin Floating Button -->
+    <button id="admin-fab" class="fab">⚙️</button>
+
+    <!-- Admin PIN Modal -->
+    <div id="pin-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Admin Access</h3>
+            <p>Enter PIN to access dashboard</p>
+            <input type="password" id="admin-pin-input" placeholder="PIN" maxlength="4">
+            <div class="modal-actions">
+                <button id="pin-cancel" class="btn secondary">Cancel</button>
+                <button id="pin-submit" class="btn primary">Unlock</button>
+            </div>
+            <p id="pin-error" class="hidden error-text">Invalid PIN</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
