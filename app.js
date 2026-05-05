@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initServiceWorker();
     fetchData(); // Fetch initial data
     startCountdown();
+    // Handle URL-based routing on load
+    handleURLRouting();
 });
 
 // Routing & Screen Management
@@ -71,7 +73,16 @@ function initRouting() {
     });
 
     backBtns.forEach(btn => {
-        btn.addEventListener('click', () => navigateTo(btn.dataset.target));
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.target || 'home';
+            navigateTo(target);
+        });
+    });
+
+    // Handle browser back/forward button
+    window.addEventListener('popstate', (e) => {
+        const screen = e.state?.screen || 'home';
+        showScreen(screen);
     });
 
     // Tabs for Schedule
@@ -106,8 +117,21 @@ function initRouting() {
 }
 
 function navigateTo(targetScreenId) {
+    // Update browser URL
+    const url = targetScreenId === 'home' ? '/' : `/${targetScreenId}`;
+    window.history.pushState({ screen: targetScreenId }, '', url);
+    
+    // Show the screen
+    showScreen(targetScreenId);
+}
+
+function showScreen(targetScreenId) {
+    targetScreenId = targetScreenId || 'home';
     screens.forEach(s => s.classList.add('hidden', 'fade-in'));
-    document.getElementById(`screen-${targetScreenId}`).classList.remove('hidden');
+    const targetElement = document.getElementById(`screen-${targetScreenId}`);
+    if (targetElement) {
+        targetElement.classList.remove('hidden');
+    }
 
     // Handle screen-specific logic
     if (targetScreenId === 'live') {
@@ -122,6 +146,14 @@ function navigateTo(targetScreenId) {
     if (targetScreenId === 'food') { renderFoodMenu(); }
     if (targetScreenId === 'notices') { renderNotices(); }
     if (targetScreenId === 'request' || targetScreenId === 'room') { populateTeamDropdowns(); }
+}
+
+function handleURLRouting() {
+    // Extract path and route accordingly
+    const path = window.location.pathname;
+    const segments = path.split('/').filter(s => s);
+    const screen = segments[0] || 'home';
+    showScreen(screen);
 }
 
 // Data Fetching
