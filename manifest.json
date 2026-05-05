@@ -1,7 +1,7 @@
 {
   "name": "Inter Unit Basketball Tournament 2026",
   "short_name": "BHEL Hoops",
-  "start_url": "/index.html",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#F5F5F5",
   "theme_color": "#E87722",
