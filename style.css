@@ -233,8 +233,8 @@ body::before {
 }
 .back-btn {
     position: fixed;
-    bottom: 2rem;
-    left: 2rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    left: max(1rem, env(safe-area-inset-left));
     z-index: 1000;
     background: rgba(20, 25, 40, 0.8);
     backdrop-filter: blur(10px);
@@ -254,6 +254,10 @@ body::before {
     border-color: var(--primary);
     box-shadow: 0 0 15px var(--primary-glow);
     transform: translateY(-2px);
+}
+
+.screen.hidden .back-btn {
+    display: none;
 }
 
 /* Glass Cards & Lists */
