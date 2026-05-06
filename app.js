@@ -484,6 +484,10 @@ function handleDemandSubmit(e) {
         // Real POST Request
         fetch(CONFIG.APPS_SCRIPT_URL, {
             method: 'POST',
+            redirect: 'follow',
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
             body: JSON.stringify({
                 action: 'submitDemand',
                 team: team,
@@ -591,6 +595,10 @@ function handleNoticeSubmit(e) {
 
     fetch(CONFIG.APPS_SCRIPT_URL, {
         method: 'POST',
+        redirect: 'follow',
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
         body: JSON.stringify({
             action: 'addAnnouncement',
             adminPIN: currentAdminPin,
