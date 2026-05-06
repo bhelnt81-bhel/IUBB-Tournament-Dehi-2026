@@ -97,13 +97,18 @@ function initRouting() {
     // Admin FAB & Modal
     document.getElementById('admin-fab').addEventListener('click', () => {
         document.getElementById('pin-modal').classList.remove('hidden');
+        document.getElementById('admin-pin-input').focus();
     });
     document.getElementById('pin-cancel').addEventListener('click', () => {
         document.getElementById('pin-modal').classList.add('hidden');
         document.getElementById('admin-pin-input').value = '';
         document.getElementById('pin-error').textContent = 'Invalid PIN';
+        document.getElementById('pin-error').classList.add('hidden');
     });
     document.getElementById('pin-submit').addEventListener('click', handleAdminLogin);
+    document.getElementById('admin-pin-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleAdminLogin();
+    });
 
     // Urgent Notice Close
     document.getElementById('close-notice-btn').addEventListener('click', () => {
@@ -609,9 +614,13 @@ async function handleAdminLogin() {
         initAdminDashboard();
     } catch (err) {
         console.error(err);
-        errorMsg.textContent = err.message === 'Unknown POST action'
-            ? 'Update and redeploy Apps Script first'
-            : 'Invalid PIN';
+        if (err.message === 'Unknown POST action') {
+            errorMsg.textContent = 'Apps Script outdated. Please redeploy Code.gs!';
+        } else if (err.message === 'Invalid PIN') {
+            errorMsg.textContent = 'Invalid PIN';
+        } else {
+            errorMsg.textContent = 'Error: ' + err.message;
+        }
         errorMsg.classList.remove('hidden');
     } finally {
         hideLoader();

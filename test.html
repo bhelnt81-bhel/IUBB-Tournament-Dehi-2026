@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Fetch</title></head>
+<body>
+<button id="test-btn">Test Fetch</button>
+<pre id="output"></pre>
+<script>
+document.getElementById('test-btn').addEventListener('click', async () => {
+    try {
+        const res = await fetch("https://script.google.com/macros/s/AKfycbyUQ_8SH5-LPKo_BY33PJhdkoLDykLEQn0FkO4MudCocMEiDMr9Fizx3ZfKxJ3kQLxT/exec", {
+            method: 'POST',
+            redirect: 'follow',
+            headers: {
+                "Content-Type": "text/plain;charset=utf-8"
+            },
+            body: JSON.stringify({ action: "verifyAdmin", adminPIN: "1234" })
+        });
+        const text = await res.text();
+        document.getElementById('output').textContent = "Status: " + res.status + "\n" + text;
+    } catch (e) {
+        document.getElementById('output').textContent = "Error: " + e.message;
+    }
+});
+</script>
+</body>
+</html>
