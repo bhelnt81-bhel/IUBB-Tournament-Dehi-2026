@@ -31,12 +31,14 @@ function doGet(e) {
           fixtures: getSheetData('Fixtures'),
           standings: getSheetData('Standings'),
           announcements: getSheetData('Announcements'),
-          foodMenu: getSheetData('FoodMenu')
+          demands: getSheetData('Demands'),
+          foodMenu: getSheetData('FoodMenu'),
+          rooms: getSheetData('RoomAllotments')
         };
         break;
       case 'getRoomInfo':
         const team = e.parameter.team;
-        // implementation to filter room sheet
+        responseData = getSheetData('RoomAllotments').find(room => room.teamName === team) || {};
         break;
       default:
         responseData = { error: "Unknown action" };
@@ -69,7 +71,10 @@ function doPost(e) {
     
     switch(action) {
       case 'submitDemand':
-        // SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Demands').appendRow([...]);
+        appendDemand(postData);
+        break;
+      case 'addAnnouncement':
+        appendAnnouncement(postData);
         break;
       default:
         result = { success: false, error: "Unknown POST action" };
@@ -84,10 +89,43 @@ function doPost(e) {
   }
 }
 
+function appendDemand(data) {
+  const sheet = getSpreadsheet().getSheetByName('Demands');
+  if (!sheet) throw new Error('Demands sheet not found');
+  sheet.appendRow([
+    new Date().getTime(),
+    new Date(),
+    data.team || data.teamName || '',
+    data.category || '',
+    data.description || '',
+    'Pending',
+    ''
+  ]);
+}
+
+function appendAnnouncement(data) {
+  const sheet = getSpreadsheet().getSheetByName('Announcements');
+  if (!sheet) throw new Error('Announcements sheet not found');
+  sheet.appendRow([
+    new Date().getTime(),
+    new Date(),
+    data.title || '',
+    data.message || '',
+    data.priority || 'Normal'
+  ]);
+}
+
+function getSpreadsheet() {
+  if (SPREADSHEET_ID && SPREADSHEET_ID !== 'YOUR_SPREADSHEET_ID_HERE') {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
+
 // Helper function to convert sheet data to JSON array
 function getSheetData(sheetName) {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const sheet = getSpreadsheet().getSheetByName(sheetName);
     if (!sheet) return [];
     
     const data = sheet.getDataRange().getValues();

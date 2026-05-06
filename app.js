@@ -6,7 +6,7 @@ let tournamentData = {
     announcements: [],
     teams: [],
     foodMenu: [],
-    rooms: []
+    rooms: {}
 };
 
 let liveMatchInterval;
@@ -114,6 +114,9 @@ function initRouting() {
     
     // Room info fetch
     document.getElementById('get-room-btn').addEventListener('click', renderRoomInfo);
+
+    // Admin notice form
+    document.getElementById('admin-notice-form').addEventListener('submit', handleNoticeSubmit);
 }
 
 function navigateTo(targetScreenId) {
@@ -168,8 +171,8 @@ async function fetchData() {
             // Real fetch logic
             const res = await fetch(`${CONFIG.APPS_SCRIPT_URL}?action=getAll`);
             const data = await res.json();
-            if(!data.error) {
-                tournamentData = Object.assign(tournamentData, data);
+            if (!data.error) {
+                tournamentData = normalizeTournamentData(Object.assign({}, tournamentData, data));
             }
         }
         checkUrgentNotice();
@@ -178,6 +181,119 @@ async function fetchData() {
     } finally {
         hideLoader();
     }
+}
+
+function normalizeTournamentData(data) {
+    const normalized = {
+        fixtures: Array.isArray(data.fixtures) ? data.fixtures.map(normalizeFixture) : [],
+        standings: Array.isArray(data.standings) ? data.standings.map(normalizeStanding) : [],
+        demands: Array.isArray(data.demands) ? data.demands.map(normalizeDemand) : [],
+        announcements: Array.isArray(data.announcements) ? data.announcements.map(normalizeAnnouncement) : [],
+        teams: Array.isArray(data.teams) ? data.teams.map(normalizeTeam) : [],
+        foodMenu: Array.isArray(data.foodMenu) ? data.foodMenu.map(normalizeFoodMenu) : [],
+        rooms: {}
+    };
+
+    if (data.rooms && !Array.isArray(data.rooms)) {
+        normalized.rooms = data.rooms;
+    } else if (Array.isArray(data.rooms)) {
+        data.rooms.forEach(room => {
+            const teamName = room.teamName || room.team || room.name;
+            if (teamName) {
+                normalized.rooms[teamName] = {
+                    room: room.roomNo || room.room || room.roomAllotted || '',
+                    location: room.location || '',
+                    amenities: room.amenitiesNote || room.amenities || ''
+                };
+            }
+        });
+    }
+
+    return normalized;
+}
+
+function normalizeTeam(team) {
+    return {
+        id: team.id || team.teamID || team.teamId || '',
+        name: team.name || team.teamName || '',
+        unit: team.unit || team.unitName || ''
+    };
+}
+
+function normalizeFixture(fixture) {
+    return {
+        id: fixture.id || fixture.matchID || fixture.matchId || '',
+        date: normalizeDateValue(fixture.date),
+        time: normalizeTimeValue(fixture.time),
+        team1: fixture.team1 || '',
+        team2: fixture.team2 || '',
+        venue: fixture.venue || '',
+        status: fixture.status || 'Scheduled',
+        team1Score: Number(fixture.team1Score || 0),
+        team2Score: Number(fixture.team2Score || 0),
+        winner: fixture.winner || '',
+        day: fixture.day || getTournamentDay(fixture.date)
+    };
+}
+
+function normalizeStanding(team) {
+    return {
+        name: team.name || team.teamName || '',
+        p: Number(team.p || team.played || 0),
+        w: Number(team.w || team.won || 0),
+        l: Number(team.l || team.lost || 0),
+        pts: Number(team.pts || team.points || 0)
+    };
+}
+
+function normalizeDemand(demand) {
+    return {
+        id: demand.id || demand.demandID || demand.demandId || '',
+        team: demand.team || demand.teamName || '',
+        category: demand.category || '',
+        description: demand.description || '',
+        status: demand.status || 'Pending'
+    };
+}
+
+function normalizeAnnouncement(notice) {
+    return {
+        id: notice.id || notice.annID || notice.annId || '',
+        title: notice.title || '',
+        message: notice.message || '',
+        priority: notice.priority || 'Normal'
+    };
+}
+
+function normalizeFoodMenu(menu) {
+    return {
+        meal: menu.meal || menu.mealType || '',
+        timing: menu.timing || '',
+        items: menu.items || menu.menuItems || ''
+    };
+}
+
+function normalizeDateValue(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value.slice(0, 10);
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value).slice(0, 10);
+}
+
+function normalizeTimeValue(value) {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (value instanceof Date) {
+        return value.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    return String(value);
+}
+
+function getTournamentDay(dateValue) {
+    const date = new Date(dateValue);
+    const start = new Date(CONFIG.START_DATE);
+    if (Number.isNaN(date.getTime()) || Number.isNaN(start.getTime())) return 1;
+    return Math.floor((date - start) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 // Render Functions
@@ -408,9 +524,11 @@ function handleAdminLogin() {
 function initAdminDashboard() {
     // Setup Admin Navigation
     document.querySelectorAll('.admin-nav-tiles .tile').forEach(btn => {
+        if (btn.dataset.listenerAttached) return;
+        btn.dataset.listenerAttached = 'true';
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.admin-sub-screen').forEach(s => s.classList.add('hidden'));
-            document.getElementById(e.target.dataset.adminTarget).classList.remove('hidden');
+            document.getElementById(e.currentTarget.dataset.adminTarget).classList.remove('hidden');
         });
     });
 
@@ -445,6 +563,56 @@ function initAdminDashboard() {
     });
 }
 
+function handleNoticeSubmit(e) {
+    e.preventDefault();
+
+    const title = document.getElementById('notice-title').value.trim();
+    const message = document.getElementById('notice-msg').value.trim();
+    const priority = document.getElementById('notice-priority').value;
+
+    if (!title || !message) return;
+
+    showLoader();
+
+    const notice = {
+        id: Date.now(),
+        title,
+        message,
+        priority
+    };
+
+    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
+        tournamentData.announcements.unshift(notice);
+        document.getElementById('admin-notice-form').reset();
+        checkUrgentNotice();
+        hideLoader();
+        return;
+    }
+
+    fetch(CONFIG.APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+            action: 'addAnnouncement',
+            adminPIN: currentAdminPin,
+            title,
+            message,
+            priority
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.error || 'Failed to post notice');
+        tournamentData.announcements.unshift(notice);
+        document.getElementById('admin-notice-form').reset();
+        checkUrgentNotice();
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Failed to post notice.");
+    })
+    .finally(hideLoader);
+}
+
 // Utilities
 function showLoader() { loader.classList.remove('hidden'); }
 function hideLoader() { loader.classList.add('hidden'); }
@@ -459,7 +627,7 @@ function checkUrgentNotice() {
 
 function startCountdown() {
     const target = new Date(CONFIG.START_DATE).getTime();
-    setInterval(() => {
+    const updateCountdown = () => {
         const now = new Date().getTime();
         const distance = target - now;
         
@@ -473,7 +641,10 @@ function startCountdown() {
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
 
         document.getElementById('timer-display').textContent = `${days}d ${hours}h ${minutes}m`;
-    }, 60000); // update every minute
+    };
+
+    updateCountdown();
+    setInterval(updateCountdown, 60000); // update every minute
 }
 
 // Service Worker Registration
