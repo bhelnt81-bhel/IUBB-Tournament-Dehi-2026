@@ -512,6 +512,26 @@ select option { background: #0A1128; color: white; }
     border: 1px solid var(--glass-border); 
 }
 .stat-value { font-size: 2.5rem; font-family: var(--font-heading); font-weight: 700; color: var(--primary); text-shadow: 0 0 10px var(--primary-glow); }
+.admin-content h3 {
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+}
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+.admin-form-grid .full-width,
+.admin-form-grid .btn {
+    grid-column: 1 / -1;
+}
+.admin-sub-screen {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.25rem;
+}
 
 /* Loader */
 #loader {
@@ -551,5 +571,9 @@ select option { background: #0A1128; color: white; }
     .btn.primary:hover,
     .back-btn:hover {
         transform: none;
+    }
+
+    .admin-form-grid {
+        grid-template-columns: 1fr;
     }
 }

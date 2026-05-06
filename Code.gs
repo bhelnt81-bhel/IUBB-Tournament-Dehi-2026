@@ -74,9 +74,8 @@ function doPost(e) {
     const action = postData.action;
     const pin = postData.adminPIN;
     
-    // Example PIN Check
-    if (['updateScore', 'updateFixture', 'addAnnouncement'].includes(action)) {
-      if (pin !== "1234") {
+    if (isAdminAction(action)) {
+      if (!isValidAdminPin(pin)) {
          return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Invalid PIN" }))
            .setMimeType(ContentService.MimeType.JSON);
       }
@@ -85,11 +84,27 @@ function doPost(e) {
     let result = { success: true };
     
     switch(action) {
+      case 'verifyAdmin':
+        result = { success: true };
+        break;
       case 'submitDemand':
         appendDemand(postData);
         break;
       case 'addAnnouncement':
         appendAnnouncement(postData);
+        break;
+      case 'saveTeam':
+        upsertTeam(postData);
+        break;
+      case 'saveFixture':
+        upsertFixture(postData);
+        recalculateStandings();
+        break;
+      case 'saveFoodMenu':
+        upsertFoodMenu(postData);
+        break;
+      case 'updateDemandStatus':
+        updateDemandStatus(postData);
         break;
       default:
         result = { success: false, error: "Unknown POST action" };
@@ -102,6 +117,25 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function isAdminAction(action) {
+  return [
+    'verifyAdmin',
+    'updateScore',
+    'updateFixture',
+    'addAnnouncement',
+    'saveTeam',
+    'saveFixture',
+    'saveFoodMenu',
+    'updateDemandStatus'
+  ].includes(action);
+}
+
+function isValidAdminPin(pin) {
+  const config = getSheetData('Config')[0] || {};
+  const configuredPin = config.adminPIN || config.adminPin || '1234';
+  return String(pin || '') === String(configuredPin);
 }
 
 function appendDemand(data) {
@@ -128,6 +162,215 @@ function appendAnnouncement(data) {
     data.message || '',
     data.priority || 'Normal'
   ]);
+}
+
+function upsertTeam(data) {
+  const sheet = getSpreadsheet().getSheetByName('Teams');
+  if (!sheet) throw new Error('Teams sheet not found');
+
+  const teamName = data.teamName || data.name || '';
+  if (!teamName) throw new Error('Team name is required');
+
+  upsertRowByKey(sheet, 'TeamName', teamName, {
+    TeamID: data.teamID || data.teamId || new Date().getTime(),
+    TeamName: teamName,
+    UnitName: data.unitName || data.unit || '',
+    CaptainName: data.captainName || '',
+    ManagerName: data.managerName || '',
+    RoomAllotted: data.roomAllotted || data.room || '',
+    ContactNumber: data.contactNumber || ''
+  });
+}
+
+function upsertFixture(data) {
+  const sheet = getSpreadsheet().getSheetByName('Fixtures');
+  if (!sheet) throw new Error('Fixtures sheet not found');
+
+  const matchId = data.matchID || data.matchId || new Date().getTime();
+  upsertRowByKey(sheet, 'MatchID', matchId, {
+    MatchID: matchId,
+    Date: data.date || '',
+    Time: data.time || '',
+    Team1: data.team1 || '',
+    Team2: data.team2 || '',
+    Venue: data.venue || '',
+    Status: data.status || 'Scheduled',
+    Team1Score: Number(data.team1Score || 0),
+    Team2Score: Number(data.team2Score || 0),
+    Winner: data.winner || ''
+  });
+}
+
+function upsertFoodMenu(data) {
+  const sheet = getSpreadsheet().getSheetByName('FoodMenu');
+  if (!sheet) throw new Error('FoodMenu sheet not found');
+
+  const date = data.date || '';
+  const mealType = data.mealType || data.meal || '';
+  if (!date || !mealType) throw new Error('Date and meal type are required');
+
+  const key = date + '|' + mealType;
+  upsertRowByCompositeKey(sheet, ['Date', 'MealType'], key, {
+    Date: date,
+    MealType: mealType,
+    MenuItems: data.menuItems || data.items || '',
+    Timing: data.timing || ''
+  });
+}
+
+function updateDemandStatus(data) {
+  const sheet = getSpreadsheet().getSheetByName('Demands');
+  if (!sheet) throw new Error('Demands sheet not found');
+
+  const demandId = data.demandID || data.demandId || data.id;
+  const fields = {
+    Status: data.status || 'Resolved',
+    AdminRemarks: data.adminRemarks || ''
+  };
+
+  if (demandId) {
+    updateRowFieldsByKey(sheet, 'DemandID', demandId, fields);
+    return;
+  }
+
+  updateDemandByDetails(sheet, data, fields);
+}
+
+function recalculateStandings() {
+  const sheet = getSpreadsheet().getSheetByName('Standings');
+  if (!sheet) return;
+
+  const teams = getSheetData('Teams').map(team => team.teamName).filter(Boolean);
+  const stats = {};
+  teams.forEach(team => {
+    stats[team] = { played: 0, won: 0, lost: 0, points: 0 };
+  });
+
+  getSheetData('Fixtures').forEach(match => {
+    if (match.status !== 'Completed') return;
+    const team1 = match.team1;
+    const team2 = match.team2;
+    if (!team1 || !team2) return;
+
+    if (!stats[team1]) stats[team1] = { played: 0, won: 0, lost: 0, points: 0 };
+    if (!stats[team2]) stats[team2] = { played: 0, won: 0, lost: 0, points: 0 };
+
+    stats[team1].played += 1;
+    stats[team2].played += 1;
+
+    const score1 = Number(match.team1Score || 0);
+    const score2 = Number(match.team2Score || 0);
+    const winner = match.winner || (score1 > score2 ? team1 : score2 > score1 ? team2 : '');
+
+    if (winner === team1) {
+      stats[team1].won += 1;
+      stats[team1].points += 2;
+      stats[team2].lost += 1;
+    } else if (winner === team2) {
+      stats[team2].won += 1;
+      stats[team2].points += 2;
+      stats[team1].lost += 1;
+    }
+  });
+
+  const rows = Object.keys(stats).map(team => [
+    team,
+    stats[team].played,
+    stats[team].won,
+    stats[team].lost,
+    stats[team].points
+  ]);
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, 5).setValues([['TeamName', 'Played', 'Won', 'Lost', 'Points']]);
+  if (rows.length) sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+}
+
+function upsertRowByKey(sheet, keyHeader, keyValue, fields) {
+  const headers = getHeaders(sheet);
+  const keyColumn = headers.indexOf(keyHeader);
+  if (keyColumn === -1) throw new Error(keyHeader + ' column not found');
+
+  const values = sheet.getDataRange().getValues();
+  let rowNumber = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][keyColumn]) === String(keyValue)) {
+      rowNumber = i + 1;
+      break;
+    }
+  }
+
+  if (rowNumber === -1) rowNumber = sheet.getLastRow() + 1;
+  writeFieldsToRow(sheet, headers, rowNumber, fields);
+}
+
+function upsertRowByCompositeKey(sheet, keyHeaders, compositeKey, fields) {
+  const headers = getHeaders(sheet);
+  const keyColumns = keyHeaders.map(header => headers.indexOf(header));
+  if (keyColumns.some(index => index === -1)) throw new Error('FoodMenu key columns not found');
+
+  const values = sheet.getDataRange().getValues();
+  let rowNumber = -1;
+  for (let i = 1; i < values.length; i++) {
+    const key = keyColumns.map(index => values[i][index]).join('|');
+    if (String(key) === String(compositeKey)) {
+      rowNumber = i + 1;
+      break;
+    }
+  }
+
+  if (rowNumber === -1) rowNumber = sheet.getLastRow() + 1;
+  writeFieldsToRow(sheet, headers, rowNumber, fields);
+}
+
+function updateRowFieldsByKey(sheet, keyHeader, keyValue, fields) {
+  const headers = getHeaders(sheet);
+  const keyColumn = headers.indexOf(keyHeader);
+  if (keyColumn === -1) throw new Error(keyHeader + ' column not found');
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][keyColumn]) === String(keyValue)) {
+      writeFieldsToRow(sheet, headers, i + 1, fields);
+      return;
+    }
+  }
+  throw new Error('Matching row not found');
+}
+
+function updateDemandByDetails(sheet, data, fields) {
+  const headers = getHeaders(sheet);
+  const teamColumn = headers.indexOf('TeamName');
+  const categoryColumn = headers.indexOf('Category');
+  const descriptionColumn = headers.indexOf('Description');
+  if ([teamColumn, categoryColumn, descriptionColumn].some(index => index === -1)) {
+    throw new Error('Demand matching columns not found');
+  }
+
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    const matches =
+      String(values[i][teamColumn]) === String(data.teamName || data.team || '') &&
+      String(values[i][categoryColumn]) === String(data.category || '') &&
+      String(values[i][descriptionColumn]) === String(data.description || '');
+    if (matches) {
+      writeFieldsToRow(sheet, headers, i + 1, fields);
+      return;
+    }
+  }
+  throw new Error('Matching demand not found');
+}
+
+function writeFieldsToRow(sheet, headers, rowNumber, fields) {
+  headers.forEach((header, index) => {
+    if (Object.prototype.hasOwnProperty.call(fields, header)) {
+      sheet.getRange(rowNumber, index + 1).setValue(fields[header]);
+    }
+  });
+}
+
+function getHeaders(sheet) {
+  return sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(header => header.toString().trim());
 }
 
 function getSpreadsheet() {

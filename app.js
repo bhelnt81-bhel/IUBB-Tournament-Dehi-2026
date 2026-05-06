@@ -117,6 +117,12 @@ function initRouting() {
 
     // Admin notice form
     document.getElementById('admin-notice-form').addEventListener('submit', handleNoticeSubmit);
+    document.getElementById('admin-team-form').addEventListener('submit', handleAdminTeamSubmit);
+    document.getElementById('admin-fixture-form').addEventListener('submit', handleAdminFixtureSubmit);
+    document.getElementById('admin-food-form').addEventListener('submit', handleAdminFoodSubmit);
+    document.getElementById('admin-fixture-select').addEventListener('change', fillFixtureForm);
+    document.getElementById('admin-team1').addEventListener('change', updateWinnerOptions);
+    document.getElementById('admin-team2').addEventListener('change', updateWinnerOptions);
 }
 
 function navigateTo(targetScreenId) {
@@ -269,7 +275,10 @@ function normalizeTeam(team) {
         id: team.id || team.teamID || team.teamId || '',
         name: team.name || team.teamName || '',
         unit: team.unit || team.unitName || '',
-        roomAllotted: team.roomAllotted || team.room || ''
+        captainName: team.captainName || '',
+        managerName: team.managerName || '',
+        roomAllotted: team.roomAllotted || team.room || '',
+        contactNumber: team.contactNumber || ''
     };
 }
 
@@ -320,6 +329,7 @@ function normalizeAnnouncement(notice) {
 
 function normalizeFoodMenu(menu) {
     return {
+        date: normalizeDateValue(menu.date),
         meal: menu.meal || menu.mealType || '',
         timing: menu.timing || '',
         items: menu.items || menu.menuItems || ''
@@ -575,19 +585,57 @@ function handleDemandSubmit(e) {
     }
 }
 
-function handleAdminLogin() {
+async function handleAdminLogin() {
     const pin = document.getElementById('admin-pin-input').value;
     const errorMsg = document.getElementById('pin-error');
     
-    if (pin === CONFIG.DEFAULT_ADMIN_PIN) {
+    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE" && pin === CONFIG.DEFAULT_ADMIN_PIN) {
         errorMsg.classList.add('hidden');
         document.getElementById('pin-modal').classList.add('hidden');
         currentAdminPin = pin;
         navigateTo('admin');
         initAdminDashboard();
-    } else {
-        errorMsg.classList.remove('hidden');
+        return;
     }
+
+    showLoader();
+    try {
+        await postAdminAction('verifyAdmin', {});
+        errorMsg.classList.add('hidden');
+        document.getElementById('pin-modal').classList.add('hidden');
+        currentAdminPin = pin;
+        navigateTo('admin');
+        initAdminDashboard();
+    } catch (err) {
+        console.error(err);
+        errorMsg.classList.remove('hidden');
+    } finally {
+        hideLoader();
+    }
+}
+
+async function postAdminAction(action, payload) {
+    const body = {
+        action,
+        adminPIN: currentAdminPin || document.getElementById('admin-pin-input').value,
+        ...payload
+    };
+
+    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
+        return { success: true };
+    }
+
+    const res = await fetchWithTimeout(CONFIG.APPS_SCRIPT_URL, {
+        method: 'POST',
+        redirect: 'follow',
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Admin action failed');
+    return data;
 }
 
 function initAdminDashboard() {
@@ -621,15 +669,156 @@ function initAdminDashboard() {
     // Populate Demands
     const demandsList = document.getElementById('admin-demands-list');
     demandsList.innerHTML = '';
-    tournamentData.demands.forEach(d => {
+    if (tournamentData.demands.length === 0) {
+        demandsList.innerHTML = '<p class="text-small">No demands submitted yet.</p>';
+    }
+    tournamentData.demands.forEach((d, index) => {
         demandsList.innerHTML += `
             <div class="card match-card mt-2">
                 <div class="match-header"><span>${d.team}</span> <span class="badge scheduled">${d.status}</span></div>
                 <p><strong>${d.category}:</strong> ${d.description}</p>
-                <button class="btn secondary text-small mt-2">Mark Resolved</button>
+                <button class="btn secondary text-small mt-2 demand-resolve-btn" data-demand-index="${index}">Mark Resolved</button>
             </div>
         `;
     });
+    document.querySelectorAll('.demand-resolve-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleDemandStatusUpdate(Number(btn.dataset.demandIndex)));
+    });
+
+    populateAdminControls();
+}
+
+function populateAdminControls() {
+    const teamOptions = '<option value="">-- Select Team --</option>' + tournamentData.teams
+        .map(team => `<option value="${team.name}">${team.name}</option>`)
+        .join('');
+
+    document.getElementById('admin-team1').innerHTML = teamOptions;
+    document.getElementById('admin-team2').innerHTML = teamOptions;
+
+    const fixtureOptions = '<option value="">New Match</option>' + tournamentData.fixtures
+        .map(match => `<option value="${match.id}">${match.id || 'Match'} - ${match.team1} vs ${match.team2}</option>`)
+        .join('');
+    document.getElementById('admin-fixture-select').innerHTML = fixtureOptions;
+    updateWinnerOptions();
+}
+
+function fillFixtureForm() {
+    const id = document.getElementById('admin-fixture-select').value;
+    const fixture = tournamentData.fixtures.find(match => String(match.id) === String(id));
+
+    document.getElementById('admin-match-id').value = fixture?.id || '';
+    document.getElementById('admin-match-date').value = fixture?.date || '';
+    document.getElementById('admin-match-time').value = toTimeInputValue(fixture?.time || '');
+    document.getElementById('admin-team1').value = fixture?.team1 || '';
+    document.getElementById('admin-team2').value = fixture?.team2 || '';
+    document.getElementById('admin-venue').value = fixture?.venue || '';
+    document.getElementById('admin-match-status').value = fixture?.status || 'Scheduled';
+    document.getElementById('admin-team1-score').value = fixture?.team1Score || 0;
+    document.getElementById('admin-team2-score').value = fixture?.team2Score || 0;
+    updateWinnerOptions();
+    document.getElementById('admin-winner').value = fixture?.winner || '';
+}
+
+function updateWinnerOptions() {
+    const team1 = document.getElementById('admin-team1').value;
+    const team2 = document.getElementById('admin-team2').value;
+    let options = '<option value="">Auto / None</option>';
+    if (team1) options += `<option value="${team1}">${team1}</option>`;
+    if (team2) options += `<option value="${team2}">${team2}</option>`;
+    document.getElementById('admin-winner').innerHTML = options;
+}
+
+function toTimeInputValue(value) {
+    if (!value) return '';
+    const match = String(value).match(/(\d{1,2}):(\d{2})/);
+    if (!match) return '';
+    let hours = Number(match[1]);
+    const minutes = match[2];
+    if (/PM/i.test(value) && hours < 12) hours += 12;
+    if (/AM/i.test(value) && hours === 12) hours = 0;
+    return `${String(hours).padStart(2, '0')}:${minutes}`;
+}
+
+async function handleAdminTeamSubmit(e) {
+    e.preventDefault();
+    const team = {
+        teamID: document.getElementById('admin-team-id').value || Date.now(),
+        teamName: document.getElementById('admin-team-name').value.trim(),
+        unitName: document.getElementById('admin-unit-name').value.trim(),
+        captainName: document.getElementById('admin-captain-name').value.trim(),
+        managerName: document.getElementById('admin-manager-name').value.trim(),
+        roomAllotted: document.getElementById('admin-room-allotted').value.trim(),
+        contactNumber: document.getElementById('admin-contact-number').value.trim()
+    };
+
+    if (!team.teamName) return;
+
+    await runAdminSave('saveTeam', team, () => {
+        document.getElementById('admin-team-form').reset();
+    });
+}
+
+async function handleAdminFixtureSubmit(e) {
+    e.preventDefault();
+    const fixture = {
+        matchID: document.getElementById('admin-match-id').value || Date.now(),
+        date: document.getElementById('admin-match-date').value,
+        time: document.getElementById('admin-match-time').value,
+        team1: document.getElementById('admin-team1').value,
+        team2: document.getElementById('admin-team2').value,
+        venue: document.getElementById('admin-venue').value.trim(),
+        status: document.getElementById('admin-match-status').value,
+        team1Score: document.getElementById('admin-team1-score').value || 0,
+        team2Score: document.getElementById('admin-team2-score').value || 0,
+        winner: document.getElementById('admin-winner').value
+    };
+
+    await runAdminSave('saveFixture', fixture, () => {
+        document.getElementById('admin-fixture-form').reset();
+        populateAdminControls();
+    });
+}
+
+async function handleAdminFoodSubmit(e) {
+    e.preventDefault();
+    const menu = {
+        date: document.getElementById('admin-food-date').value,
+        mealType: document.getElementById('admin-meal-type').value,
+        timing: document.getElementById('admin-food-timing').value.trim(),
+        menuItems: document.getElementById('admin-menu-items').value.trim()
+    };
+
+    await runAdminSave('saveFoodMenu', menu, () => {
+        document.getElementById('admin-food-form').reset();
+    });
+}
+
+async function handleDemandStatusUpdate(demandIndex) {
+    const demand = tournamentData.demands[demandIndex];
+    if (!demand) return;
+    await runAdminSave('updateDemandStatus', {
+        demandID: demand.id,
+        teamName: demand.team,
+        category: demand.category,
+        description: demand.description,
+        status: 'Resolved'
+    });
+}
+
+async function runAdminSave(action, payload, onSuccess) {
+    showLoader();
+    try {
+        await postAdminAction(action, payload);
+        if (onSuccess) onSuccess();
+        await fetchData();
+        initAdminDashboard();
+    } catch (err) {
+        console.error(err);
+        alert(err.message || 'Failed to save admin data.');
+    } finally {
+        hideLoader();
+    }
 }
 
 function handleNoticeSubmit(e) {
@@ -650,34 +839,12 @@ function handleNoticeSubmit(e) {
         priority
     };
 
-    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
+    postAdminAction('addAnnouncement', { title, message, priority })
+    .then(() => {
         tournamentData.announcements.unshift(notice);
         document.getElementById('admin-notice-form').reset();
         checkUrgentNotice();
-        hideLoader();
-        return;
-    }
-
-    fetch(CONFIG.APPS_SCRIPT_URL, {
-        method: 'POST',
-        redirect: 'follow',
-        headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify({
-            action: 'addAnnouncement',
-            adminPIN: currentAdminPin,
-            title,
-            message,
-            priority
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (!data.success) throw new Error(data.error || 'Failed to post notice');
-        tournamentData.announcements.unshift(notice);
-        document.getElementById('admin-notice-form').reset();
-        checkUrgentNotice();
+        renderNotices();
     })
     .catch(err => {
         console.error(err);
