@@ -13,7 +13,7 @@
     --glass-bg: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.1);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --glass-blur: blur(12px);
+    --glass-blur: blur(4px);
     
     --font-heading: 'Rajdhani', sans-serif;
     --font-body: 'Inter', sans-serif;
@@ -34,7 +34,7 @@ body {
     background-image: url('images/basketball-court-bg.png');
     background-size: cover;
     background-position: center;
-    background-attachment: fixed;
+    background-attachment: scroll;
     min-height: 100vh;
 }
 
@@ -536,3 +536,20 @@ select option { background: #0A1128; color: white; }
     box-shadow: 0 0 15px var(--primary-glow);
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
+    .fade-in,
+    .screen.fade-in,
+    .hero-image,
+    .pulse-dot,
+    .spinner {
+        animation: none;
+    }
+
+    .tile:hover,
+    .card:hover,
+    .btn.primary:hover,
+    .back-btn:hover {
+        transform: none;
+    }
+}

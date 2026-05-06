@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bhel-hoops-v1';
+const CACHE_NAME = 'bhel-hoops-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -17,9 +17,21 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
+  const requestUrl = new URL(event.request.url);
+
+  if (
+    event.request.method !== 'GET' ||
+    requestUrl.hostname === 'script.google.com' ||
+    requestUrl.hostname === 'script.googleusercontent.com'
+  ) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   // Try network first, fallback to cache for robustness
   event.respondWith(
     fetch(event.request).catch(() => {
@@ -38,6 +50,6 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });

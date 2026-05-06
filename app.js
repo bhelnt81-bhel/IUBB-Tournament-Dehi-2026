@@ -168,19 +168,61 @@ async function fetchData() {
             await new Promise(r => setTimeout(r, 500));
             tournamentData = JSON.parse(JSON.stringify(MOCK_DATA));
         } else {
-            // Real fetch logic
-            const res = await fetch(`${CONFIG.APPS_SCRIPT_URL}?action=getAll`);
+            const res = await fetchWithTimeout(`${CONFIG.APPS_SCRIPT_URL}?action=getAll&_=${Date.now()}`, {
+                cache: 'no-store'
+            });
+            if (!res.ok) throw new Error(`Backend returned ${res.status}`);
             const data = await res.json();
             if (!data.error) {
                 tournamentData = normalizeTournamentData(Object.assign({}, tournamentData, data));
+            } else {
+                throw new Error(data.error);
             }
         }
         checkUrgentNotice();
+        renderCurrentScreen();
     } catch (e) {
         console.error("Failed to fetch data:", e);
+        showDataError("Could not refresh backend data. Please check your connection and Apps Script deployment.");
     } finally {
         hideLoader();
     }
+}
+
+function fetchWithTimeout(url, options = {}, timeout = 12000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    return fetch(url, {
+        ...options,
+        signal: controller.signal
+    }).finally(() => clearTimeout(timeoutId));
+}
+
+function showDataError(message) {
+    const currentScreen = window.location.pathname.split('/').filter(Boolean)[0] || 'home';
+    const target = document.getElementById(`screen-${currentScreen}`);
+    if (!target || target.querySelector('.data-error')) return;
+
+    const error = document.createElement('div');
+    error.className = 'alert data-error';
+    error.textContent = message;
+    target.prepend(error);
+}
+
+function renderCurrentScreen() {
+    const currentScreen = window.location.pathname.split('/').filter(Boolean)[0] || 'home';
+
+    if (currentScreen === 'schedule') renderSchedule(getActiveScheduleDay());
+    if (currentScreen === 'live') renderLiveMatch();
+    if (currentScreen === 'standings') renderStandings();
+    if (currentScreen === 'food') renderFoodMenu();
+    if (currentScreen === 'notices') renderNotices();
+    if (currentScreen === 'request' || currentScreen === 'room') populateTeamDropdowns(true);
+}
+
+function getActiveScheduleDay() {
+    return document.querySelector('.tab-btn.active')?.dataset.day || 1;
 }
 
 function normalizeTournamentData(data) {
@@ -194,8 +236,18 @@ function normalizeTournamentData(data) {
         rooms: {}
     };
 
+    normalized.teams.forEach(team => {
+        if (team.name && team.roomAllotted) {
+            normalized.rooms[team.name] = {
+                room: team.roomAllotted,
+                location: team.unit || '',
+                amenities: ''
+            };
+        }
+    });
+
     if (data.rooms && !Array.isArray(data.rooms)) {
-        normalized.rooms = data.rooms;
+        normalized.rooms = Object.assign(normalized.rooms, data.rooms);
     } else if (Array.isArray(data.rooms)) {
         data.rooms.forEach(room => {
             const teamName = room.teamName || room.team || room.name;
@@ -216,7 +268,8 @@ function normalizeTeam(team) {
     return {
         id: team.id || team.teamID || team.teamId || '',
         name: team.name || team.teamName || '',
-        unit: team.unit || team.unitName || ''
+        unit: team.unit || team.unitName || '',
+        roomAllotted: team.roomAllotted || team.room || ''
     };
 }
 
@@ -424,17 +477,25 @@ function renderNotices() {
     });
 }
 
-function populateTeamDropdowns() {
+function populateTeamDropdowns(forceRefresh = false) {
     const demandSelect = document.getElementById('demand-team');
     const roomSelect = document.getElementById('room-team-select');
+    const selectedDemandTeam = demandSelect.value;
+    const selectedRoomTeam = roomSelect.value;
     
     let options = '<option value="">-- Choose Team --</option>';
     tournamentData.teams.forEach(t => {
         options += `<option value="${t.name}">${t.name}</option>`;
     });
 
-    if(demandSelect.children.length <= 1) demandSelect.innerHTML = options;
-    if(roomSelect.children.length <= 1) roomSelect.innerHTML = options;
+    if(forceRefresh || demandSelect.children.length <= 1) {
+        demandSelect.innerHTML = options;
+        demandSelect.value = selectedDemandTeam;
+    }
+    if(forceRefresh || roomSelect.children.length <= 1) {
+        roomSelect.innerHTML = options;
+        roomSelect.value = selectedRoomTeam;
+    }
 }
 
 function renderRoomInfo() {
@@ -447,14 +508,14 @@ function renderRoomInfo() {
     }
 
     const info = tournamentData.rooms[team];
-    if (info) {
+    if (info && info.room) {
         container.classList.remove('hidden');
         container.innerHTML = `
             <div class="card fade-in" style="border-left: 4px solid var(--primary);">
                 <h3>${team}</h3>
                 <p class="mt-2"><strong>Room:</strong> ${info.room}</p>
-                <p><strong>Location:</strong> ${info.location}</p>
-                <p><strong>Amenities:</strong> ${info.amenities}</p>
+                ${info.location ? `<p><strong>Location:</strong> ${info.location}</p>` : ''}
+                ${info.amenities ? `<p><strong>Amenities:</strong> ${info.amenities}</p>` : ''}
             </div>
         `;
     } else {

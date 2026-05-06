@@ -38,7 +38,7 @@ function doGet(e) {
         break;
       case 'getRoomInfo':
         const team = e.parameter.team;
-        responseData = getSheetData('RoomAllotments').find(room => room.teamName === team) || {};
+        responseData = getRoomInfo(team);
         break;
       default:
         responseData = { error: "Unknown action" };
@@ -51,6 +51,21 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function getRoomInfo(team) {
+  const roomInfo = getSheetData('RoomAllotments').find(room => room.teamName === team);
+  if (roomInfo) return roomInfo;
+
+  const teamInfo = getSheetData('Teams').find(row => row.teamName === team);
+  if (!teamInfo || !teamInfo.roomAllotted) return {};
+
+  return {
+    teamName: teamInfo.teamName,
+    roomNo: teamInfo.roomAllotted,
+    location: teamInfo.unitName || '',
+    amenitiesNote: ''
+  };
 }
 
 function doPost(e) {
