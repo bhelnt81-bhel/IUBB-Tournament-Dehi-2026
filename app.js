@@ -101,6 +101,7 @@ function initRouting() {
     document.getElementById('pin-cancel').addEventListener('click', () => {
         document.getElementById('pin-modal').classList.add('hidden');
         document.getElementById('admin-pin-input').value = '';
+        document.getElementById('pin-error').textContent = 'Invalid PIN';
     });
     document.getElementById('pin-submit').addEventListener('click', handleAdminLogin);
 
@@ -608,6 +609,9 @@ async function handleAdminLogin() {
         initAdminDashboard();
     } catch (err) {
         console.error(err);
+        errorMsg.textContent = err.message === 'Unknown POST action'
+            ? 'Update and redeploy Apps Script first'
+            : 'Invalid PIN';
         errorMsg.classList.remove('hidden');
     } finally {
         hideLoader();
