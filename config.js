@@ -5,7 +5,8 @@ const CONFIG = {
     
     // Tournament details
     TOURNAMENT_NAME: "Inter Unit Basketball Tournament 2026",
-    START_DATE: "2026-05-11",
+    START_DATE: "2026-05-12",
+    START_TIME: "09:00:00",
     END_DATE: "2026-05-15",
     ORGANIZER: "Estate Office, BHEL Township, Noida",
     

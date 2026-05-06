@@ -291,9 +291,13 @@ function normalizeTimeValue(value) {
 
 function getTournamentDay(dateValue) {
     const date = new Date(dateValue);
-    const start = new Date(CONFIG.START_DATE);
+    const start = getTournamentStartDate();
     if (Number.isNaN(date.getTime()) || Number.isNaN(start.getTime())) return 1;
     return Math.floor((date - start) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function getTournamentStartDate() {
+    return new Date(`${CONFIG.START_DATE}T${CONFIG.START_TIME || '00:00:00'}`);
 }
 
 // Render Functions
@@ -634,7 +638,7 @@ function checkUrgentNotice() {
 }
 
 function startCountdown() {
-    const target = new Date(CONFIG.START_DATE).getTime();
+    const target = getTournamentStartDate().getTime();
     const updateCountdown = () => {
         const now = new Date().getTime();
         const distance = target - now;
@@ -647,12 +651,13 @@ function startCountdown() {
         const days = Math.floor(distance / (1000 * 60 * 60 * 24));
         const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-        document.getElementById('timer-display').textContent = `${days}d ${hours}h ${minutes}m`;
+        document.getElementById('timer-display').textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
     };
 
     updateCountdown();
-    setInterval(updateCountdown, 60000); // update every minute
+    setInterval(updateCountdown, 1000); // update every second
 }
 
 // Service Worker Registration
