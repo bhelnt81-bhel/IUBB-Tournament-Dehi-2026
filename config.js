@@ -1,7 +1,7 @@
 const CONFIG = {
     // Replace with your deployed Google Apps Script Web App URL
     // Currently using a mock URL for local development/testing.
-    APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwMLWxq-idabhXgPPMIDkuKniMefQU8X-zLnd-uP2skCqP5mh6gh1v6YORo63L-HRxG/exec",
+    APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwW9VNCAVCO5H_0xc6-HMaQPIkm7IeB5IcXKVt4A7Rln3Zm9ENP9Pfeurb-iHK5lRrK/exec",
 
     // Tournament details
     TOURNAMENT_NAME: "Inter Unit Basketball Tournament 2026",
