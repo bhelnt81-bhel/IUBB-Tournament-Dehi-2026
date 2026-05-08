@@ -9,6 +9,9 @@ const CONFIG = {
     START_TIME: "09:00:00",
     END_DATE: "2026-05-15",
     ORGANIZER: "Estate Office, BHEL Township, Noida",
+    TOWNSHIP_NAME: "BHEL Township, Noida",
+    TOWNSHIP_ADDRESS: "Estate Office, BHEL Township, Noida",
+    TOWNSHIP_MAP_URL: "https://www.google.com/maps/search/?api=1&query=BHEL%20Township%20Noida",
 
     // Admin default PIN
     DEFAULT_ADMIN_PIN: "1234"

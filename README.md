@@ -24,6 +24,8 @@ A fully functional Progressive Web App (PWA) for managing the Inter Unit Basketb
    - `Announcements` (Cols: AnnID, Timestamp, Title, Message, Priority)
    - `RoomAllotments` (Cols: RoomNo, Location, TeamName, CheckIn, CheckOut, AmenitiesNote)
    - `FoodMenu` (Cols: Date, MealType, MenuItems, Timing)
+   - `Contacts` (Cols: ContactID, Name, Role, TeamName, Phone, Priority, IsPublic)
+   - `InfoPages` (Cols: InfoID, Category, Title, Description, MapLink, Phone, SortOrder)
    - `Config` (Cols: AdminPIN, TournamentName, StartDate, EndDate, Venue)
 
 ### 2. Google Apps Script Setup

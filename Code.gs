@@ -33,6 +33,8 @@ function doGet(e) {
           announcements: getSheetData('Announcements'),
           demands: getSheetData('Demands'),
           foodMenu: getSheetData('FoodMenu'),
+          contacts: getSheetData('Contacts'),
+          infoPages: getSheetData('InfoPages'),
           rooms: getSheetData('RoomAllotments')
         };
         break;
@@ -103,6 +105,12 @@ function doPost(e) {
       case 'saveFoodMenu':
         upsertFoodMenu(postData);
         break;
+      case 'saveContact':
+        upsertContact(postData);
+        break;
+      case 'saveInfoPage':
+        upsertInfoPage(postData);
+        break;
       case 'updateDemandStatus':
         updateDemandStatus(postData);
         break;
@@ -128,6 +136,8 @@ function isAdminAction(action) {
     'saveTeam',
     'saveFixture',
     'saveFoodMenu',
+    'saveContact',
+    'saveInfoPage',
     'updateDemandStatus'
   ].includes(action);
 }
@@ -215,6 +225,45 @@ function upsertFoodMenu(data) {
     MealType: mealType,
     MenuItems: data.menuItems || data.items || '',
     Timing: data.timing || ''
+  });
+}
+
+function upsertContact(data) {
+  const sheet = getSpreadsheet().getSheetByName('Contacts');
+  if (!sheet) throw new Error('Contacts sheet not found');
+
+  const contactId = data.contactID || data.contactId || new Date().getTime();
+  const name = data.name || '';
+  const phone = data.phone || data.contactNumber || '';
+  if (!name || !phone) throw new Error('Name and phone are required');
+
+  upsertRowByKey(sheet, 'ContactID', contactId, {
+    ContactID: contactId,
+    Name: name,
+    Role: data.role || 'Other',
+    TeamName: data.teamName || data.team || '',
+    Phone: phone,
+    Priority: data.priority || 99,
+    IsPublic: data.isPublic || 'TRUE'
+  });
+}
+
+function upsertInfoPage(data) {
+  const sheet = getSpreadsheet().getSheetByName('InfoPages');
+  if (!sheet) throw new Error('InfoPages sheet not found');
+
+  const infoId = data.infoID || data.infoId || new Date().getTime();
+  const title = data.title || '';
+  if (!title) throw new Error('Title is required');
+
+  upsertRowByKey(sheet, 'InfoID', infoId, {
+    InfoID: infoId,
+    Category: data.category || 'Other',
+    Title: title,
+    Description: data.description || data.details || '',
+    MapLink: data.mapLink || '',
+    Phone: data.phone || '',
+    SortOrder: data.sortOrder || 99
   });
 }
 

@@ -80,10 +80,26 @@
                     <span class="tile-icon">📢</span>
                     <span class="tile-label">Notices</span>
                 </button>
+                <button class="tile" data-target="contacts">
+                    <span class="tile-icon">☎</span>
+                    <span class="tile-label">Contacts</span>
+                </button>
+                <button class="tile" data-target="info">
+                    <span class="tile-icon">i</span>
+                    <span class="tile-label">Info</span>
+                </button>
                 <button class="tile" data-target="request">
                     <span class="tile-icon">✋</span>
                     <span class="tile-label">Raise Request</span>
                 </button>
+            </div>
+            <div class="township-map-card">
+                <div>
+                    <p class="eyebrow">Township Location</p>
+                    <h3 id="township-name">BHEL Township, Noida</h3>
+                    <p id="township-address" class="text-small">Estate Office, BHEL Township, Noida</p>
+                </div>
+                <a id="township-map-link" class="btn secondary compact-link" href="#" target="_blank" rel="noopener">Open Map</a>
             </div>
         </section>
 
@@ -182,6 +198,35 @@
             </div>
         </section>
 
+        <!-- SCREEN: Contacts -->
+        <section id="screen-contacts" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Contacts</h2>
+            </div>
+            <div class="tabs contact-tabs">
+                <button class="tab-btn active" data-contact-filter="all">All</button>
+                <button class="tab-btn" data-contact-filter="Host Coordinator">Host Coordinators</button>
+                <button class="tab-btn" data-contact-filter="Manager">Managers</button>
+                <button class="tab-btn" data-contact-filter="Captain">Captains</button>
+                <button class="tab-btn" data-contact-filter="Medical">Medical</button>
+            </div>
+            <div id="contacts-container" class="card-list">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
+        <!-- SCREEN: Info -->
+        <section id="screen-info" class="screen hidden">
+            <div class="screen-header">
+                <button class="back-btn" data-target="home">← Back</button>
+                <h2>Information</h2>
+            </div>
+            <div id="info-container" class="card-list">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+
         <!-- SCREEN: Raise Request -->
         <section id="screen-request" class="screen hidden">
             <div class="screen-header">
@@ -230,6 +275,8 @@
                 <button class="tile" data-admin-target="admin-demands">Demands</button>
                 <button class="tile" data-admin-target="admin-food">Food</button>
                 <button class="tile" data-admin-target="admin-notices">Notices</button>
+                <button class="tile" data-admin-target="admin-contacts">Contacts</button>
+                <button class="tile" data-admin-target="admin-info">Info</button>
             </div>
             <div id="admin-content-area" class="admin-content mt-2">
                 <!-- Admin sub-screens will go here -->
@@ -380,6 +427,71 @@
                         </div>
                         <button type="submit" class="btn primary">Post</button>
                     </form>
+                </div>
+                <div id="admin-contacts" class="admin-sub-screen hidden">
+                    <h3>Contact Entry</h3>
+                    <form id="admin-contact-form" class="admin-form-grid">
+                        <div class="form-group">
+                            <label for="admin-contact-name">Name</label>
+                            <input type="text" id="admin-contact-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-contact-role">Role</label>
+                            <select id="admin-contact-role" required>
+                                <option value="Host Coordinator">Host Coordinator</option>
+                                <option value="Manager">Manager</option>
+                                <option value="Captain">Captain</option>
+                                <option value="Medical">Medical</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-contact-team">Team / Area</label>
+                            <input type="text" id="admin-contact-team">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-contact-phone">Phone</label>
+                            <input type="tel" id="admin-contact-phone" required>
+                        </div>
+                        <button type="submit" class="btn primary">Save Contact</button>
+                    </form>
+                    <div id="admin-contacts-list" class="compact-admin-list"></div>
+                </div>
+                <div id="admin-info" class="admin-sub-screen hidden">
+                    <h3>Information Entry</h3>
+                    <form id="admin-info-form" class="admin-form-grid">
+                        <div class="form-group">
+                            <label for="admin-info-category">Category</label>
+                            <select id="admin-info-category" required>
+                                <option value="Venue">Venue</option>
+                                <option value="Room Facilities">Room Facilities</option>
+                                <option value="Food Venue">Food Venue</option>
+                                <option value="Doctor">Doctor</option>
+                                <option value="Nearby Place">Nearby Place</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-info-title">Title</label>
+                            <input type="text" id="admin-info-title" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="admin-info-description">Details</label>
+                            <textarea id="admin-info-description" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-info-map">Map Link</label>
+                            <input type="url" id="admin-info-map">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-info-phone">Phone</label>
+                            <input type="tel" id="admin-info-phone">
+                        </div>
+                        <button type="submit" class="btn primary">Save Info</button>
+                    </form>
+                    <div id="admin-info-list" class="compact-admin-list"></div>
                 </div>
             </div>
         </section>

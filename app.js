@@ -6,6 +6,8 @@ let tournamentData = {
     announcements: [],
     teams: [],
     foodMenu: [],
+    contacts: [],
+    infoPages: [],
     rooms: {}
 };
 
@@ -46,7 +48,18 @@ const MOCK_DATA = {
     rooms: {
         "Team Alpha": { room: "R-101", location: "Guest House A", amenities: "AC, WiFi" },
         "Team Bravo": { room: "R-102", location: "Guest House A", amenities: "AC, WiFi" }
-    }
+    },
+    contacts: [
+        { id: 1, name: "Host Control Room", role: "Host Coordinator", team: "BHEL Township", phone: "9999999999" },
+        { id: 2, name: "Medical Desk", role: "Medical", team: "First Aid", phone: "9999999998" },
+        { id: 3, name: "Alpha Manager", role: "Manager", team: "Team Alpha", phone: "9999999997" },
+        { id: 4, name: "Alpha Captain", role: "Captain", team: "Team Alpha", phone: "9999999996" }
+    ],
+    infoPages: [
+        { id: 1, category: "Venue", title: "Main Basketball Court", description: "Main event venue inside BHEL Township.", mapLink: CONFIG.TOWNSHIP_MAP_URL, phone: "" },
+        { id: 2, category: "Room Facilities", title: "Guest House Facilities", description: "Rooms include basic bedding, drinking water, and shared support desk.", mapLink: "", phone: "" },
+        { id: 3, category: "Food Venue", title: "Dining Hall", description: "Lunch and dinner venue will be updated by the host team.", mapLink: "", phone: "" }
+    ]
 };
 
 // DOM Elements
@@ -60,6 +73,7 @@ const urgentNoticeBanner = document.getElementById('urgent-notice-banner');
 document.addEventListener('DOMContentLoaded', () => {
     initRouting();
     initServiceWorker();
+    renderTownshipMap();
     fetchData(); // Fetch initial data
     startCountdown();
     // Handle URL-based routing on load
@@ -88,11 +102,14 @@ function initRouting() {
     // Tabs for Schedule
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            if (e.target.dataset.contactFilter) return;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             renderSchedule(e.target.dataset.day);
         });
     });
+
+    initContactFilters();
 
     // Admin FAB & Modal
     document.getElementById('admin-fab').addEventListener('click', () => {
@@ -126,6 +143,8 @@ function initRouting() {
     document.getElementById('admin-team-form').addEventListener('submit', handleAdminTeamSubmit);
     document.getElementById('admin-fixture-form').addEventListener('submit', handleAdminFixtureSubmit);
     document.getElementById('admin-food-form').addEventListener('submit', handleAdminFoodSubmit);
+    document.getElementById('admin-contact-form').addEventListener('submit', handleAdminContactSubmit);
+    document.getElementById('admin-info-form').addEventListener('submit', handleAdminInfoSubmit);
     document.getElementById('admin-fixture-select').addEventListener('change', fillFixtureForm);
     document.getElementById('admin-team1').addEventListener('change', updateWinnerOptions);
     document.getElementById('admin-team2').addEventListener('change', updateWinnerOptions);
@@ -160,6 +179,8 @@ function showScreen(targetScreenId) {
     if (targetScreenId === 'standings') { renderStandings(); }
     if (targetScreenId === 'food') { renderFoodMenu(); }
     if (targetScreenId === 'notices') { renderNotices(); }
+    if (targetScreenId === 'contacts') { renderContacts(); }
+    if (targetScreenId === 'info') { renderInfoPages(); }
     if (targetScreenId === 'request' || targetScreenId === 'room') { populateTeamDropdowns(); }
 }
 
@@ -175,10 +196,10 @@ function handleURLRouting() {
 async function fetchData() {
     showLoader();
     try {
-        if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
+        if (shouldUseMockData()) {
             // Simulate network delay
             await new Promise(r => setTimeout(r, 500));
-            tournamentData = JSON.parse(JSON.stringify(MOCK_DATA));
+            tournamentData = normalizeTournamentData(JSON.parse(JSON.stringify(MOCK_DATA)));
         } else {
             const res = await fetchWithTimeout(`${CONFIG.APPS_SCRIPT_URL}?action=getAll&_=${Date.now()}`, {
                 cache: 'no-store'
@@ -194,11 +215,26 @@ async function fetchData() {
         checkUrgentNotice();
         renderCurrentScreen();
     } catch (e) {
+        if (isLocalPreview()) {
+            console.warn("Backend unavailable in local preview. Using mock data.", e);
+            tournamentData = normalizeTournamentData(JSON.parse(JSON.stringify(MOCK_DATA)));
+            checkUrgentNotice();
+            renderCurrentScreen();
+            return;
+        }
         console.error("Failed to fetch data:", e);
         showDataError("Could not refresh backend data. Please check your connection and Apps Script deployment.");
     } finally {
         hideLoader();
     }
+}
+
+function shouldUseMockData() {
+    return CONFIG.APPS_SCRIPT_URL === "MOCK_MODE" || isLocalPreview();
+}
+
+function isLocalPreview() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 }
 
 function fetchWithTimeout(url, options = {}, timeout = 12000) {
@@ -230,6 +266,8 @@ function renderCurrentScreen() {
     if (currentScreen === 'standings') renderStandings();
     if (currentScreen === 'food') renderFoodMenu();
     if (currentScreen === 'notices') renderNotices();
+    if (currentScreen === 'contacts') renderContacts();
+    if (currentScreen === 'info') renderInfoPages();
     if (currentScreen === 'request' || currentScreen === 'room') populateTeamDropdowns(true);
 }
 
@@ -245,8 +283,12 @@ function normalizeTournamentData(data) {
         announcements: Array.isArray(data.announcements) ? data.announcements.map(normalizeAnnouncement) : [],
         teams: Array.isArray(data.teams) ? data.teams.map(normalizeTeam) : [],
         foodMenu: Array.isArray(data.foodMenu) ? data.foodMenu.map(normalizeFoodMenu) : [],
+        contacts: Array.isArray(data.contacts) ? data.contacts.map(normalizeContact) : [],
+        infoPages: Array.isArray(data.infoPages) ? data.infoPages.map(normalizeInfoPage) : [],
         rooms: {}
     };
+
+    normalized.contacts = mergeTeamContacts(normalized.contacts, normalized.teams);
 
     normalized.teams.forEach(team => {
         if (team.name && team.roomAllotted) {
@@ -286,6 +328,69 @@ function normalizeTeam(team) {
         roomAllotted: team.roomAllotted || team.room || '',
         contactNumber: team.contactNumber || ''
     };
+}
+
+function normalizeContact(contact) {
+    return {
+        id: contact.id || contact.contactID || contact.contactId || '',
+        name: contact.name || '',
+        role: contact.role || contact.category || '',
+        team: contact.team || contact.teamName || contact.unitName || '',
+        phone: contact.phone || contact.contactNumber || '',
+        priority: Number(contact.priority || 99),
+        isPublic: String(contact.isPublic ?? 'TRUE').toLowerCase() !== 'false'
+    };
+}
+
+function normalizeInfoPage(info) {
+    return {
+        id: info.id || info.infoID || info.infoId || '',
+        category: info.category || '',
+        title: info.title || '',
+        description: info.description || info.details || '',
+        mapLink: info.mapLink || '',
+        phone: info.phone || '',
+        sortOrder: Number(info.sortOrder || 99)
+    };
+}
+
+function mergeTeamContacts(contacts, teams) {
+    const merged = [...contacts.filter(contact => contact.isPublic)];
+    const seen = new Set(merged.map(contact => `${contact.role}|${contact.name}|${contact.phone}`));
+
+    teams.forEach(team => {
+        if (team.managerName && team.contactNumber) {
+            addDerivedContact(merged, seen, {
+                id: `manager-${team.id || team.name}`,
+                name: team.managerName,
+                role: 'Manager',
+                team: team.name,
+                phone: team.contactNumber,
+                priority: 20,
+                isPublic: true
+            });
+        }
+        if (team.captainName && team.contactNumber) {
+            addDerivedContact(merged, seen, {
+                id: `captain-${team.id || team.name}`,
+                name: team.captainName,
+                role: 'Captain',
+                team: team.name,
+                phone: team.contactNumber,
+                priority: 30,
+                isPublic: true
+            });
+        }
+    });
+
+    return merged.sort((a, b) => a.priority - b.priority || a.role.localeCompare(b.role) || a.name.localeCompare(b.name));
+}
+
+function addDerivedContact(list, seen, contact) {
+    const key = `${contact.role}|${contact.name}|${contact.phone}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    list.push(contact);
 }
 
 function normalizeFixture(fixture) {
@@ -493,6 +598,84 @@ function renderNotices() {
     });
 }
 
+function renderContacts(filter = getActiveContactFilter()) {
+    const container = document.getElementById('contacts-container');
+    container.innerHTML = '';
+
+    const contacts = tournamentData.contacts.filter(contact => filter === 'all' || contact.role === filter);
+    if (contacts.length === 0) {
+        container.innerHTML = '<p class="text-small">No contacts available yet.</p>';
+        return;
+    }
+
+    contacts.forEach(contact => {
+        const phone = normalizePhoneNumber(contact.phone);
+        const callLink = phone ? `tel:${phone}` : '#';
+        const whatsappLink = phone ? `https://wa.me/${phone}` : '#';
+        container.innerHTML += `
+            <div class="card contact-card fade-in">
+                <div>
+                    <span class="badge scheduled">${escapeHTML(contact.role || 'Contact')}</span>
+                    <h3>${escapeHTML(contact.name)}</h3>
+                    ${contact.team ? `<p class="text-small">${escapeHTML(contact.team)}</p>` : ''}
+                </div>
+                ${contact.phone ? `<p class="contact-phone">${escapeHTML(contact.phone)}</p>` : ''}
+                <div class="action-row">
+                    <a class="btn secondary" href="${callLink}">Call</a>
+                    <a class="btn primary" href="${whatsappLink}" target="_blank" rel="noopener">WhatsApp</a>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function renderInfoPages() {
+    const container = document.getElementById('info-container');
+    container.innerHTML = '';
+
+    const infoPages = [...tournamentData.infoPages].sort((a, b) => a.sortOrder - b.sortOrder || a.category.localeCompare(b.category));
+    if (infoPages.length === 0) {
+        container.innerHTML = '<p class="text-small">No information items available yet.</p>';
+        return;
+    }
+
+    infoPages.forEach(info => {
+        const phone = normalizePhoneNumber(info.phone);
+        container.innerHTML += `
+            <div class="card info-card fade-in">
+                <span class="badge scheduled">${escapeHTML(info.category || 'Info')}</span>
+                <h3>${escapeHTML(info.title)}</h3>
+                <p>${escapeHTML(info.description)}</p>
+                <div class="action-row ${!info.mapLink && !phone ? 'hidden' : ''}">
+                    ${info.mapLink ? `<a class="btn secondary" href="${escapeHTML(info.mapLink)}" target="_blank" rel="noopener">Map</a>` : ''}
+                    ${phone ? `<a class="btn primary" href="tel:${phone}">Call</a>` : ''}
+                </div>
+            </div>
+        `;
+    });
+}
+
+function getActiveContactFilter() {
+    return document.querySelector('.contact-tabs .tab-btn.active')?.dataset.contactFilter || 'all';
+}
+
+function initContactFilters() {
+    document.querySelectorAll('.contact-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.contact-tabs .tab-btn').forEach(tab => tab.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            renderContacts(e.currentTarget.dataset.contactFilter);
+        });
+    });
+}
+
+function renderTownshipMap() {
+    document.getElementById('township-name').textContent = CONFIG.TOWNSHIP_NAME || 'BHEL Township';
+    document.getElementById('township-address').textContent = CONFIG.TOWNSHIP_ADDRESS || CONFIG.ORGANIZER || '';
+    const mapLink = document.getElementById('township-map-link');
+    mapLink.href = CONFIG.TOWNSHIP_MAP_URL || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONFIG.TOWNSHIP_ADDRESS || CONFIG.ORGANIZER || 'BHEL Township')}`;
+}
+
 function populateTeamDropdowns(forceRefresh = false) {
     const demandSelect = document.getElementById('demand-team');
     const roomSelect = document.getElementById('room-team-select');
@@ -595,7 +778,7 @@ async function handleAdminLogin() {
     const pin = document.getElementById('admin-pin-input').value;
     const errorMsg = document.getElementById('pin-error');
     
-    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE" && pin === CONFIG.DEFAULT_ADMIN_PIN) {
+    if (shouldUseMockData() && pin === CONFIG.DEFAULT_ADMIN_PIN) {
         errorMsg.classList.add('hidden');
         document.getElementById('pin-modal').classList.add('hidden');
         currentAdminPin = pin;
@@ -634,7 +817,7 @@ async function postAdminAction(action, payload) {
         ...payload
     };
 
-    if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
+    if (shouldUseMockData()) {
         return { success: true };
     }
 
@@ -677,6 +860,10 @@ function initAdminDashboard() {
             <div class="stat-value" style="color: var(--danger)">${tournamentData.demands.filter(d=>d.status==='Pending').length}</div>
             <div class="text-small">Pending Demands</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-value">${tournamentData.contacts.length}</div>
+            <div class="text-small">Contacts</div>
+        </div>
     `;
 
     // Populate Demands
@@ -698,7 +885,29 @@ function initAdminDashboard() {
         btn.addEventListener('click', () => handleDemandStatusUpdate(Number(btn.dataset.demandIndex)));
     });
 
+    renderAdminCompactLists();
     populateAdminControls();
+}
+
+function renderAdminCompactLists() {
+    const contactsList = document.getElementById('admin-contacts-list');
+    if (contactsList) {
+        contactsList.innerHTML = tournamentData.contacts.slice(0, 8).map(contact => `
+            <div class="compact-row">
+                <span>${escapeHTML(contact.name)} <small>${escapeHTML(contact.role)}</small></span>
+                <span>${escapeHTML(contact.phone)}</span>
+            </div>
+        `).join('') || '<p class="text-small mt-2">No contacts yet.</p>';
+    }
+
+    const infoList = document.getElementById('admin-info-list');
+    if (infoList) {
+        infoList.innerHTML = tournamentData.infoPages.slice(0, 8).map(info => `
+            <div class="compact-row">
+                <span>${escapeHTML(info.title)} <small>${escapeHTML(info.category)}</small></span>
+            </div>
+        `).join('') || '<p class="text-small mt-2">No information items yet.</p>';
+    }
 }
 
 function populateAdminControls() {
@@ -807,6 +1016,43 @@ async function handleAdminFoodSubmit(e) {
     });
 }
 
+async function handleAdminContactSubmit(e) {
+    e.preventDefault();
+    const contact = {
+        contactID: Date.now(),
+        name: document.getElementById('admin-contact-name').value.trim(),
+        role: document.getElementById('admin-contact-role').value,
+        teamName: document.getElementById('admin-contact-team').value.trim(),
+        phone: document.getElementById('admin-contact-phone').value.trim(),
+        isPublic: 'TRUE'
+    };
+
+    if (!contact.name || !contact.phone) return;
+
+    await runAdminSave('saveContact', contact, () => {
+        document.getElementById('admin-contact-form').reset();
+    });
+}
+
+async function handleAdminInfoSubmit(e) {
+    e.preventDefault();
+    const info = {
+        infoID: Date.now(),
+        category: document.getElementById('admin-info-category').value,
+        title: document.getElementById('admin-info-title').value.trim(),
+        description: document.getElementById('admin-info-description').value.trim(),
+        mapLink: document.getElementById('admin-info-map').value.trim(),
+        phone: document.getElementById('admin-info-phone').value.trim(),
+        sortOrder: 99
+    };
+
+    if (!info.title || !info.description) return;
+
+    await runAdminSave('saveInfoPage', info, () => {
+        document.getElementById('admin-info-form').reset();
+    });
+}
+
 async function handleDemandStatusUpdate(demandIndex) {
     const demand = tournamentData.demands[demandIndex];
     if (!demand) return;
@@ -869,6 +1115,23 @@ function handleNoticeSubmit(e) {
 // Utilities
 function showLoader() { loader.classList.remove('hidden'); }
 function hideLoader() { loader.classList.add('hidden'); }
+
+function normalizePhoneNumber(phone) {
+    const cleaned = String(phone || '').replace(/[^\d]/g, '');
+    if (!cleaned) return '';
+    if (cleaned.length === 10) return `91${cleaned}`;
+    return cleaned;
+}
+
+function escapeHTML(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
 
 function checkUrgentNotice() {
     const urgent = tournamentData.announcements.find(a => a.priority === 'Urgent');
