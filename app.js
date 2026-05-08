@@ -78,6 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
     startCountdown();
     // Handle URL-based routing on load
     handleURLRouting();
+    // Check Version for Update Modal
+    const CURRENT_APP_VERSION = "v1.1.0-beta";
+    const updateModal = document.getElementById('update-modal');
+    if (updateModal && !localStorage.getItem(`app_version_${CURRENT_APP_VERSION}`)) {
+        updateModal.classList.remove('hidden');
+        document.getElementById('update-acknowledge-btn').addEventListener('click', () => {
+            localStorage.setItem(`app_version_${CURRENT_APP_VERSION}`, 'true');
+            updateModal.classList.add('hidden');
+        });
+    }
 });
 
 // Routing & Screen Management
