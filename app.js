@@ -144,7 +144,7 @@ function initRouting() {
 
     // Demand form submit
     document.getElementById('demand-form').addEventListener('submit', handleDemandSubmit);
-    
+
     // Room info fetch
     document.getElementById('get-room-btn').addEventListener('click', renderRoomInfo);
 
@@ -164,7 +164,7 @@ function navigateTo(targetScreenId) {
     // Update browser URL
     const url = targetScreenId === 'home' ? '/' : `/${targetScreenId}`;
     window.history.pushState({ screen: targetScreenId }, '', url);
-    
+
     // Show the screen
     showScreen(targetScreenId);
 }
@@ -184,7 +184,7 @@ function showScreen(targetScreenId) {
     } else {
         clearInterval(liveMatchInterval);
     }
-    
+
     if (targetScreenId === 'schedule') { renderSchedule(1); }
     if (targetScreenId === 'standings') { renderStandings(); }
     if (targetScreenId === 'food') { renderFoodMenu(); }
@@ -488,9 +488,9 @@ function getTournamentStartDate() {
 function renderSchedule(day) {
     const container = document.getElementById('fixtures-container');
     container.innerHTML = '';
-    
+
     const dayFixtures = tournamentData.fixtures.filter(f => f.day == day);
-    
+
     if (dayFixtures.length === 0) {
         container.innerHTML = '<p class="text-small">No matches scheduled for this day.</p>';
         return;
@@ -500,7 +500,7 @@ function renderSchedule(day) {
         let badgeClass = f.status.toLowerCase();
         let badgeText = f.status;
         let scoreHTML = '';
-        
+
         if (f.status === 'Completed') {
             scoreHTML = `<div class="match-score">${f.team1Score} - ${f.team2Score}</div>`;
         } else if (f.status === 'Live') {
@@ -553,10 +553,10 @@ function renderLiveMatch() {
 function renderStandings() {
     const tbody = document.getElementById('standings-body');
     tbody.innerHTML = '';
-    
+
     // Sort by points
     const sorted = [...tournamentData.standings].sort((a, b) => b.pts - a.pts);
-    
+
     sorted.forEach(team => {
         tbody.innerHTML += `
             <tr class="fade-in">
@@ -573,7 +573,7 @@ function renderStandings() {
 function renderFoodMenu() {
     const container = document.getElementById('food-container');
     container.innerHTML = '';
-    
+
     tournamentData.foodMenu.forEach(menu => {
         container.innerHTML += `
             <div class="card fade-in">
@@ -588,7 +588,7 @@ function renderFoodMenu() {
 function renderNotices() {
     const container = document.getElementById('notices-container');
     container.innerHTML = '';
-    
+
     if (tournamentData.announcements.length === 0) {
         container.innerHTML = '<p>No notices available.</p>';
         return;
@@ -691,17 +691,17 @@ function populateTeamDropdowns(forceRefresh = false) {
     const roomSelect = document.getElementById('room-team-select');
     const selectedDemandTeam = demandSelect.value;
     const selectedRoomTeam = roomSelect.value;
-    
+
     let options = '<option value="">-- Choose Team --</option>';
     tournamentData.teams.forEach(t => {
         options += `<option value="${t.name}">${t.name}</option>`;
     });
 
-    if(forceRefresh || demandSelect.children.length <= 1) {
+    if (forceRefresh || demandSelect.children.length <= 1) {
         demandSelect.innerHTML = options;
         demandSelect.value = selectedDemandTeam;
     }
-    if(forceRefresh || roomSelect.children.length <= 1) {
+    if (forceRefresh || roomSelect.children.length <= 1) {
         roomSelect.innerHTML = options;
         roomSelect.value = selectedRoomTeam;
     }
@@ -710,7 +710,7 @@ function populateTeamDropdowns(forceRefresh = false) {
 function renderRoomInfo() {
     const team = document.getElementById('room-team-select').value;
     const container = document.getElementById('room-info-container');
-    
+
     if (!team) {
         alert("Please select a team.");
         return;
@@ -739,19 +739,19 @@ function handleDemandSubmit(e) {
     const team = document.getElementById('demand-team').value;
     const cat = document.getElementById('demand-category').value;
     const desc = document.getElementById('demand-desc').value;
-    
+
     showLoader();
-    
+
     if (CONFIG.APPS_SCRIPT_URL === "MOCK_MODE") {
         // Simulate API Call
         setTimeout(() => {
             hideLoader();
             document.getElementById('demand-form').reset();
             document.getElementById('demand-success').classList.remove('hidden');
-            
+
             // Add to local mock state
             tournamentData.demands.push({ id: Date.now(), team, category: cat, description: desc, status: "Pending" });
-            
+
             setTimeout(() => document.getElementById('demand-success').classList.add('hidden'), 3000);
         }, 800);
     } else {
@@ -769,25 +769,25 @@ function handleDemandSubmit(e) {
                 description: desc
             })
         })
-        .then(res => res.json())
-        .then(data => {
-            hideLoader();
-            document.getElementById('demand-form').reset();
-            document.getElementById('demand-success').classList.remove('hidden');
-            setTimeout(() => document.getElementById('demand-success').classList.add('hidden'), 3000);
-        })
-        .catch(err => {
-            hideLoader();
-            console.error(err);
-            alert("Failed to submit request.");
-        });
+            .then(res => res.json())
+            .then(data => {
+                hideLoader();
+                document.getElementById('demand-form').reset();
+                document.getElementById('demand-success').classList.remove('hidden');
+                setTimeout(() => document.getElementById('demand-success').classList.add('hidden'), 3000);
+            })
+            .catch(err => {
+                hideLoader();
+                console.error(err);
+                alert("Failed to submit request.");
+            });
     }
 }
 
 async function handleAdminLogin() {
     const pin = document.getElementById('admin-pin-input').value;
     const errorMsg = document.getElementById('pin-error');
-    
+
     if (shouldUseMockData() && pin === CONFIG.DEFAULT_ADMIN_PIN) {
         errorMsg.classList.add('hidden');
         document.getElementById('pin-modal').classList.add('hidden');
@@ -863,11 +863,11 @@ function initAdminDashboard() {
             <div class="text-small">Teams</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">${tournamentData.fixtures.filter(f=>f.day==1).length}</div>
+            <div class="stat-value">${tournamentData.fixtures.filter(f => f.day == 1).length}</div>
             <div class="text-small">Matches Today</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value" style="color: var(--danger)">${tournamentData.demands.filter(d=>d.status==='Pending').length}</div>
+            <div class="stat-value" style="color: var(--danger)">${tournamentData.demands.filter(d => d.status === 'Pending').length}</div>
             <div class="text-small">Pending Demands</div>
         </div>
         <div class="stat-card">
@@ -1109,17 +1109,17 @@ function handleNoticeSubmit(e) {
     };
 
     postAdminAction('addAnnouncement', { title, message, priority })
-    .then(() => {
-        tournamentData.announcements.unshift(notice);
-        document.getElementById('admin-notice-form').reset();
-        checkUrgentNotice();
-        renderNotices();
-    })
-    .catch(err => {
-        console.error(err);
-        alert("Failed to post notice.");
-    })
-    .finally(hideLoader);
+        .then(() => {
+            tournamentData.announcements.unshift(notice);
+            document.getElementById('admin-notice-form').reset();
+            checkUrgentNotice();
+            renderNotices();
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Failed to post notice.");
+        })
+        .finally(hideLoader);
 }
 
 // Utilities
@@ -1156,7 +1156,7 @@ function startCountdown() {
     const updateCountdown = () => {
         const now = new Date().getTime();
         const distance = target - now;
-        
+
         if (distance < 0) {
             document.getElementById('timer-display').textContent = "Tournament Started!";
             return;
