@@ -683,7 +683,9 @@ function renderTownshipMap() {
     document.getElementById('township-name').textContent = CONFIG.TOWNSHIP_NAME || 'BHEL Township';
     document.getElementById('township-address').textContent = CONFIG.TOWNSHIP_ADDRESS || CONFIG.ORGANIZER || '';
     const mapLink = document.getElementById('township-map-link');
-    mapLink.href = CONFIG.TOWNSHIP_MAP_URL || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONFIG.TOWNSHIP_ADDRESS || CONFIG.ORGANIZER || 'BHEL Township')}`;
+    if (mapLink) {
+        mapLink.href = CONFIG.TOWNSHIP_MAP_URL || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CONFIG.TOWNSHIP_ADDRESS || CONFIG.ORGANIZER || 'BHEL Township')}`;
+    }
 }
 
 function populateTeamDropdowns(forceRefresh = false) {
