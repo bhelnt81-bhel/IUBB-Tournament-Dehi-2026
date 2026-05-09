@@ -1082,6 +1082,7 @@ async function runAdminSave(action, payload, onSuccess) {
     try {
         await postAdminAction(action, payload);
         if (onSuccess) onSuccess();
+        showToast('Saved successfully!');
         await fetchData();
         initAdminDashboard();
     } catch (err) {
@@ -1116,6 +1117,7 @@ function handleNoticeSubmit(e) {
             document.getElementById('admin-notice-form').reset();
             checkUrgentNotice();
             renderNotices();
+            showToast('Notice posted successfully!');
         })
         .catch(err => {
             console.error(err);
@@ -1127,6 +1129,19 @@ function handleNoticeSubmit(e) {
 // Utilities
 function showLoader() { loader.classList.remove('hidden'); }
 function hideLoader() { loader.classList.add('hidden'); }
+
+function showToast(message) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
 
 function normalizePhoneNumber(phone) {
     const cleaned = String(phone || '').replace(/[^\d]/g, '');
